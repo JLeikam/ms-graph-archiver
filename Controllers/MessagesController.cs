@@ -12,6 +12,10 @@ using System.Threading;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
+using SixLabors.ImageSharp.PixelFormats;
+using Image = SixLabors.ImageSharp.Image;
 
 namespace ms_graph_app.Controllers
 {
@@ -165,6 +169,8 @@ namespace ms_graph_app.Controllers
             // get a page of messages
             var messages = await GetMessages(graphClient, DeltaLink);
 
+            await GetAttachments(graphClient, messages);
+
             OutputMessages(messages);
 
             // go through all of the pages so that we can get the delta link on the last page.
@@ -182,11 +188,39 @@ namespace ms_graph_app.Controllers
             }
         }
 
+        private async Task GetAttachments(GraphServiceClient graphClient, IMessageDeltaCollectionPage messages)
+        {
+            foreach (var message in messages)
+            {
+                if (message.HasAttachments == true)
+                {
+                    IMessageAttachmentsCollectionPage attachmentsPage = await graphClient.Users["jleikam@integrativemeaning.com"]
+                                        .MailFolders
+                                        .Inbox
+                                        .Messages[message.Id]
+                                        .Attachments
+                                        .Request()
+                                        .GetAsync();
+
+                   
+                    if(attachmentsPage.CurrentPage.First().ODataType == "#microsoft.graph.fileAttachment")
+                    {
+                        var fileAttachment = attachmentsPage.CurrentPage.First() as FileAttachment;
+                        Image image = Image.Load(fileAttachment.ContentBytes);
+                        image.Save("testPic.jpg");
+                    }
+                   
+                }
+            }
+        }
+
         private void OutputMessages(IMessageDeltaCollectionPage messages)
         {
             foreach (var message in messages)
             {
-                var output = $"Message: {message.Id}, {message.From} {message.HasAttachments}";
+               
+                var output = $"Message: {message.Id} {message.Subject}";
+                
                 Console.WriteLine(output);
             }
         }
