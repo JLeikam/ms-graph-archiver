@@ -26,9 +26,12 @@ namespace ms_graph_app
     public void ConfigureServices(IServiceCollection services)
     {
       services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
-      var config = new MyConfig();
-      Configuration.Bind("MyConfig", config);
-      services.AddSingleton(config);
+      var graphConfig = new GraphConfig();
+      var visionConfig = new VisionConfig();
+      Configuration.Bind("GraphConfig", graphConfig);
+      Configuration.Bind("VisionConfig", visionConfig);
+      services.AddSingleton(graphConfig);
+      services.AddSingleton(visionConfig);
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

@@ -1,6 +1,6 @@
-namespace ms_graph_app
+﻿namespace ms_graph_app
 {
-  public class MyConfig
+  public class GraphConfig
   {
     public string AppId { get; set; }
     public string AppSecret { get; set; }

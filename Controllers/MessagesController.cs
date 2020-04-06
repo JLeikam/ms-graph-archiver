@@ -23,11 +23,11 @@ namespace ms_graph_app.Controllers
     [ApiController]
     public class MessagesController : ControllerBase
     {
-        private readonly MyConfig config;
+        private readonly GraphConfig config;
         private static Dictionary<string, Subscription> Subscriptions = new Dictionary<string, Subscription>();
         private static Timer subscriptionTimer = null;
 
-        public MessagesController(MyConfig config)
+        public MessagesController(GraphConfig config)
         {
             this.config = config;
         }
@@ -40,7 +40,7 @@ namespace ms_graph_app.Controllers
             var sub = new Microsoft.Graph.Subscription();
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
-            sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages";
+            sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages?$filter=isRead eq false";
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
 
@@ -192,6 +192,7 @@ namespace ms_graph_app.Controllers
         {
             foreach (var message in messages)
             {
+                Console.WriteLine("message");
                 if (message.HasAttachments == true)
                 {
                     IMessageAttachmentsCollectionPage attachmentsPage = await graphClient.Users["jleikam@integrativemeaning.com"]
@@ -206,8 +207,9 @@ namespace ms_graph_app.Controllers
                     if(attachmentsPage.CurrentPage.First().ODataType == "#microsoft.graph.fileAttachment")
                     {
                         var fileAttachment = attachmentsPage.CurrentPage.First() as FileAttachment;
-                        Image image = Image.Load(fileAttachment.ContentBytes);
-                        image.Save("testPic.jpg");
+                        var byteArr = fileAttachment.ContentBytes;
+                        //Image image = Image.Load(fileAttachment.ContentBytes);
+                        //image.Save("testPic.jpg");
                     }
                    
                 }
