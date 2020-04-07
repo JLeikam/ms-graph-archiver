@@ -24,7 +24,7 @@ namespace ms_graph_app.Controllers
         }
 
         [HttpPost]
-        public async Task OCR([FromBody] byte[] byteData)
+        public async Task<string> OCR([FromBody] string[] base64Strings)
         {
             try
             {
@@ -56,6 +56,7 @@ namespace ms_graph_app.Controllers
                 //byte[] byteData = GetImageAsByteArray(imageFilePath);
 
                 // Adds the byte array as an octet stream to the request body.
+                byte[] byteData = Convert.FromBase64String(base64Strings.First());
                 using (ByteArrayContent content = new ByteArrayContent(byteData))
                 {
                     // This example uses the "application/octet-stream" content type.
@@ -82,7 +83,7 @@ namespace ms_graph_app.Controllers
                     string errorString = await response.Content.ReadAsStringAsync();
                     Console.WriteLine("\n\nResponse:\n{0}\n",
                         JToken.Parse(errorString).ToString());
-                    return;
+                    return "error";
                 }
 
                 // If the first REST API method completes successfully, the second 
@@ -108,7 +109,7 @@ namespace ms_graph_app.Controllers
                 if (i == 60 && contentString.IndexOf("\"status\":\"succeeded\"") == -1)
                 {
                     Console.WriteLine("\nTimeout error.\n");
-                    return;
+                    return "timeout error";
                 }
 
 
@@ -127,7 +128,7 @@ namespace ms_graph_app.Controllers
 
                 }
                 Console.WriteLine("Full text: {0}", text);
-
+                return text;
                 // Display the JSON response.
                 //Console.WriteLine("\nResponse:\n\n{0}\n",
                 //    JToken.Parse(contentString).ToString());
@@ -136,6 +137,7 @@ namespace ms_graph_app.Controllers
             {
                 Console.WriteLine("\n" + e.Message);
             }
+            return "nothing";
         }
 
     }

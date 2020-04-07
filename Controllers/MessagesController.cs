@@ -41,6 +41,7 @@ namespace ms_graph_app.Controllers
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
             sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages?$filter=isRead eq false";
+            //sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages";
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
 
@@ -169,7 +170,16 @@ namespace ms_graph_app.Controllers
             // get a page of messages
             var messages = await GetMessages(graphClient, DeltaLink);
 
-            await GetAttachments(graphClient, messages);
+            var base64str = await GetAttachments(graphClient, messages);
+            if (base64str != null)
+            {
+                using (var client = new HttpClient())
+                {
+                    string[] base64StrArr = new string[] { base64str };
+                    client.BaseAddress = new Uri("http://localhost:5000");
+                    var response = client.PostAsJsonAsync("/api/vision", base64StrArr).Result;
+                }
+            }
 
             OutputMessages(messages);
 
@@ -188,8 +198,9 @@ namespace ms_graph_app.Controllers
             }
         }
 
-        private async Task GetAttachments(GraphServiceClient graphClient, IMessageDeltaCollectionPage messages)
+        private async Task<string> GetAttachments(GraphServiceClient graphClient, IMessageDeltaCollectionPage messages)
         {
+            string base64String = null;
             foreach (var message in messages)
             {
                 Console.WriteLine("message");
@@ -208,12 +219,14 @@ namespace ms_graph_app.Controllers
                     {
                         var fileAttachment = attachmentsPage.CurrentPage.First() as FileAttachment;
                         var byteArr = fileAttachment.ContentBytes;
+                        base64String = Convert.ToBase64String(byteArr);
                         //Image image = Image.Load(fileAttachment.ContentBytes);
                         //image.Save("testPic.jpg");
                     }
                    
                 }
             }
+            return base64String;
         }
 
         private void OutputMessages(IMessageDeltaCollectionPage messages)

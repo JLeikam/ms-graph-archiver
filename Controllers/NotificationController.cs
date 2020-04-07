@@ -19,10 +19,10 @@ namespace ms_graph_app.Controllers
   [ApiController]
   public class NotificationsController : ControllerBase
   {
-    private readonly MyConfig config;
+    private readonly GraphConfig config;
     private static Dictionary<string, Subscription> Subscriptions = new Dictionary<string, Subscription>();
     private static Timer subscriptionTimer = null;
-    public NotificationsController(MyConfig config)
+    public NotificationsController(GraphConfig config)
     {
       this.config = config;
     }
