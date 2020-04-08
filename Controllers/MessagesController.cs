@@ -40,8 +40,8 @@ namespace ms_graph_app.Controllers
             var sub = new Microsoft.Graph.Subscription();
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
-            sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages?$filter=isRead eq false";
-            //sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages";
+            //sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages?$filter=isRead eq false";
+            sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Archiver/messages?$filter=isRead eq false";
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
 
@@ -84,7 +84,7 @@ namespace ms_graph_app.Controllers
                 }
             }
 
-            // use deltaquery to query for all updates
+            // query for updates
             await CheckForUpdates();
 
             return Ok();
@@ -159,18 +159,17 @@ namespace ms_graph_app.Controllers
             Console.WriteLine($"Renewed subscription: {subscription.Id}, New Expiration: {subscription.ExpirationDateTime}");
         }
 
-        private static object DeltaLink = null;
-
-        private static IMessageDeltaCollectionPage lastPage = null;
-
+        
         private async Task CheckForUpdates()
         {
             var graphClient = GetGraphClient();
 
             // get a page of messages
-            var messages = await GetMessages(graphClient, DeltaLink);
+            var messages = await GetUnreadMessages(graphClient);
 
             var base64str = await GetAttachments(graphClient, messages);
+            //TODO: add marked read when attachments have been retrieved
+
             if (base64str != null)
             {
                 using (var client = new HttpClient())
@@ -183,22 +182,9 @@ namespace ms_graph_app.Controllers
 
             OutputMessages(messages);
 
-            // go through all of the pages so that we can get the delta link on the last page.
-            while (messages.NextPageRequest != null)
-            {
-                messages = messages.NextPageRequest.GetAsync().Result;
-                OutputMessages(messages);
-            }
-
-            object deltaLink;
-
-            if (messages.AdditionalData.TryGetValue("@odata.deltaLink", out deltaLink))
-            {
-                DeltaLink = deltaLink;
-            }
         }
 
-        private async Task<string> GetAttachments(GraphServiceClient graphClient, IMessageDeltaCollectionPage messages)
+        private async Task<string> GetAttachments(GraphServiceClient graphClient, IMailFolderMessagesCollectionPage messages)
         {
             string base64String = null;
             foreach (var message in messages)
@@ -206,6 +192,8 @@ namespace ms_graph_app.Controllers
                 Console.WriteLine("message");
                 if (message.HasAttachments == true)
                 {
+                    //TODO: add check for body in here
+                    //TODO: check for attachment types
                     IMessageAttachmentsCollectionPage attachmentsPage = await graphClient.Users["jleikam@integrativemeaning.com"]
                                         .MailFolders
                                         .Inbox
@@ -214,8 +202,8 @@ namespace ms_graph_app.Controllers
                                         .Request()
                                         .GetAsync();
 
-                   
-                    if(attachmentsPage.CurrentPage.First().ODataType == "#microsoft.graph.fileAttachment")
+
+                    if (attachmentsPage.CurrentPage.First().ODataType == "#microsoft.graph.fileAttachment")
                     {
                         var fileAttachment = attachmentsPage.CurrentPage.First() as FileAttachment;
                         var byteArr = fileAttachment.ContentBytes;
@@ -223,48 +211,32 @@ namespace ms_graph_app.Controllers
                         //Image image = Image.Load(fileAttachment.ContentBytes);
                         //image.Save("testPic.jpg");
                     }
-                   
+
                 }
             }
             return base64String;
         }
 
-        private void OutputMessages(IMessageDeltaCollectionPage messages)
+        private void OutputMessages(IMailFolderMessagesCollectionPage messages)
         {
             foreach (var message in messages)
             {
-               
-                var output = $"Message: {message.Id} {message.Subject}";
-                
+                var output = $"Message: {message.Id} {message.Subject} {message.Body}";
                 Console.WriteLine(output);
             }
         }
 
-        private async Task<IMessageDeltaCollectionPage> GetMessages(GraphServiceClient graphClient, object deltaLink)
+        private async Task<IMailFolderMessagesCollectionPage> GetUnreadMessages(GraphServiceClient graphClient)
         {
-            IMessageDeltaCollectionPage page;
-
-            if (lastPage == null)
-            {
+            IMailFolderMessagesCollectionPage page;
                 page = await graphClient.Users["jleikam@integrativemeaning.com"]
                                         .MailFolders
                                         .Inbox
                                         .Messages
-                                        .Delta()
                                         .Request()
+                                        .Filter("isRead eq false")
                                         .GetAsync();
-            }
-            else
-            {
-                lastPage.InitializeNextPageRequest(graphClient, deltaLink.ToString());
-                page = await lastPage.NextPageRequest.GetAsync();
-            }
-
-            lastPage = page;
             return page;
         }
-
-
-
     }
 }
