@@ -36,12 +36,10 @@ namespace ms_graph_app.Controllers
         public async Task<ActionResult<string>> Get()
         {
             var graphServiceClient = GetGraphClient();
-            var messagesEndpoint = graphServiceClient.Users["jleikam@integrativemeaning.com"].MailFolders.Inbox.Messages.RequestUrl;
             var sub = new Microsoft.Graph.Subscription();
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
-            //sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Inbox/messages?$filter=isRead eq false";
-            sub.Resource = "/users/jleikam@integrativemeaning.com/mailFolders/Archiver/messages?$filter=isRead eq false";
+            sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages?$filter=isRead eq false";
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
 
@@ -164,57 +162,53 @@ namespace ms_graph_app.Controllers
         {
             var graphClient = GetGraphClient();
 
-            // get a page of messages
-            var messages = await GetUnreadMessages(graphClient);
+            IMailFolderMessagesCollectionPage messages = await GetUnreadMessages(graphClient);
 
-            var base64str = await GetAttachments(graphClient, messages);
+            var fileAttachments = await GetFileAttachments(graphClient, messages);
             //TODO: add marked read when attachments have been retrieved
 
-            if (base64str != null)
-            {
-                using (var client = new HttpClient())
-                {
-                    string[] base64StrArr = new string[] { base64str };
-                    client.BaseAddress = new Uri("http://localhost:5000");
-                    var response = client.PostAsJsonAsync("/api/vision", base64StrArr).Result;
-                }
-            }
+            //if (base64str != null)
+            //{
+            //    using (var client = new HttpClient())
+            //    {
+            //        string[] base64StrArr = new string[] { base64str };
+            //        client.BaseAddress = new Uri("http://localhost:5000");
+            //        var response = client.PostAsJsonAsync("/api/vision", base64StrArr).Result;
+            //    }
+            //}
 
             OutputMessages(messages);
 
         }
 
-        private async Task<string> GetAttachments(GraphServiceClient graphClient, IMailFolderMessagesCollectionPage messages)
+        private async Task<Dictionary<Message, List<FileAttachment>>> GetFileAttachments(GraphServiceClient graphClient, IMailFolderMessagesCollectionPage messages)
         {
-            string base64String = null;
-            foreach (var message in messages)
+            var msgIdToAttachmentsDict = new Dictionary<Message, List<FileAttachment>>();
+            for(int i = 0; i<messages.Count; i++)
             {
-                Console.WriteLine("message");
-                if (message.HasAttachments == true)
+                if (messages[i].HasAttachments == true)
                 {
-                    //TODO: add check for body in here
-                    //TODO: check for attachment types
+                    var attachmentsList = new List<FileAttachment>();
                     IMessageAttachmentsCollectionPage attachmentsPage = await graphClient.Users["jleikam@integrativemeaning.com"]
                                         .MailFolders
-                                        .Inbox
-                                        .Messages[message.Id]
+                                        [config.ArchiverId]
+                                        .Messages[messages[i].Id]
                                         .Attachments
                                         .Request()
                                         .GetAsync();
 
+                    for (int j = 0; j < attachmentsPage.Count; j++) {
+                        if (attachmentsPage[j].ODataType == "#microsoft.graph.fileAttachment")
+                        {
+                            var fileAttachment = attachmentsPage[j] as FileAttachment;
+                            attachmentsList.Add(fileAttachment);
 
-                    if (attachmentsPage.CurrentPage.First().ODataType == "#microsoft.graph.fileAttachment")
-                    {
-                        var fileAttachment = attachmentsPage.CurrentPage.First() as FileAttachment;
-                        var byteArr = fileAttachment.ContentBytes;
-                        base64String = Convert.ToBase64String(byteArr);
-                        //Image image = Image.Load(fileAttachment.ContentBytes);
-                        //image.Save("testPic.jpg");
+                        }
                     }
-
+                    msgIdToAttachmentsDict[messages[i]] = attachmentsList;
                 }
             }
-            return base64String;
+            return msgIdToAttachmentsDict;
         }
 
         private void OutputMessages(IMailFolderMessagesCollectionPage messages)
@@ -231,7 +225,7 @@ namespace ms_graph_app.Controllers
             IMailFolderMessagesCollectionPage page;
                 page = await graphClient.Users["jleikam@integrativemeaning.com"]
                                         .MailFolders
-                                        .Inbox
+                                        [config.ArchiverId]
                                         .Messages
                                         .Request()
                                         .Filter("isRead eq false")
