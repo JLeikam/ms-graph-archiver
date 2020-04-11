@@ -17,6 +17,7 @@ using System.Net.Http.Headers;
 using KeyValuePair = System.Collections.Generic.KeyValuePair;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
+using CsvHelper;
 
 namespace ms_graph_app.Controllers
 {
@@ -179,7 +180,7 @@ namespace ms_graph_app.Controllers
                     }
                     else if (attachment.ContentType.Contains("csv"))
                     {
-                        //csv parser
+                        CsvParse(attachment.ContentBytes);
                     }
                 }
             }
@@ -240,6 +241,50 @@ namespace ms_graph_app.Controllers
                                     .Filter("isRead eq false")
                                     .GetAsync();
             return page;
+        }
+
+        private void CsvParse(byte[] contentBytes)
+        {
+            Stream stream = new MemoryStream(contentBytes);
+            //IEnumerable<KindleCsv> quotes = new ;
+            IEnumerable<KindleCsv> myQuotes = new List<KindleCsv>();
+            using (var reader = new StreamReader(stream))
+            using (var csv = new CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture))
+            {
+                var records = new List<KindleCsv>();
+                for(int i =1; i<=7; i++)
+                {
+                    csv.Read();
+                }
+                csv.Read();
+                csv.ReadHeader();
+                while (csv.Read())
+                {
+                    
+                    var record = new KindleCsv
+                    {
+                        //AnnotationType = csv.GetField("\"Annotation Type\""),
+                        //Location = csv.GetField("\"Location\""),
+                        //IsStarred = csv.GetField("\"Starred?\""),
+                        //Annotation = csv.GetField("\"Annotation\"")
+                        AnnotationType = csv.GetField("Annotation Type"),
+                        Location = csv.GetField("Location"),
+                        IsStarred = csv.GetField("Starred?"),
+                        Annotation = csv.GetField("Annotation")
+                    };
+                    records.Add(record);
+                    Console.WriteLine(record.Annotation);
+                }
+
+                //csv.Configuration.PrepareHeaderForMatch = (string header, int index) => header.Replace(" ", string.Empty).Replace("?", string.Empty);
+                //csv.Configuration.HeaderValidated = null;
+                //csv.Configuration.MissingFieldFound = null;
+                //IEnumerable<KindleCsv> quote = csv.GetRecords<KindleCsv>();
+                //Console.WriteLine(quote.);
+
+                //Console.WriteLine(quote.Location);
+            }
+            Console.WriteLine("END OF PARSE");
         }
 
         private ComputerVisionClient GetComputerVisionClient()
