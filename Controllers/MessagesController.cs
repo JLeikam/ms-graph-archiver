@@ -18,6 +18,8 @@ using KeyValuePair = System.Collections.Generic.KeyValuePair;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
 using CsvHelper;
+using System.Text;
+using System.Net.Http;
 
 namespace ms_graph_app.Controllers
 {
@@ -180,14 +182,49 @@ namespace ms_graph_app.Controllers
                     }
                     else if (attachment.ContentType.Contains("csv"))
                     {
-                        CsvParse(attachment.ContentBytes);
+                        var list = CsvParse(attachment.ContentBytes);
+                        //foreach(var record in list)
+                        //{
+
+                        //}
                     }
                 }
                 await MarkMessageAsRead(graphClient, kvp.Key.Id);
             }
-
+            var str = "hello world";
+            await PostToNotebook(graphClient, str);
             OutputMessages(messages);
 
+        }
+
+        private async Task PostToNotebook(GraphServiceClient graphClient, string msg)
+        {
+            
+            //var byteData = Encoding.UTF8.GetBytes(msg);
+            //Stream stream = new MemoryStream(byteData);
+            var accessToken = GetAccessToken().Result;
+            using (var client = new HttpClient())
+            {
+
+                client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                using (var content = new MultipartFormDataContent("MyPartBoundary198374"))
+                {
+                    var stringContent = new StringContent("<h1>Hello</h1>", Encoding.UTF8, "text/html");
+                    content.Add(stringContent, "Presentation");
+
+                    var requestUrl = graphClient.Users["jleikam@integrativemeaning.com"]
+                        .Onenote
+                        .Pages
+                        .RequestUrl;
+
+                    using (
+                       var message =
+                           await client.PostAsync(requestUrl, content))
+                    {
+                        Console.WriteLine(message.StatusCode);
+                    }
+                }
+            }
         }
 
         private async Task MarkMessageAsRead(GraphServiceClient graphClient, string msgId)
@@ -255,13 +292,14 @@ namespace ms_graph_app.Controllers
             return page;
         }
 
-        private void CsvParse(byte[] contentBytes)
+        private List<KindleCsv> CsvParse(byte[] contentBytes)
         {
+            var records = new List<KindleCsv>();
             Stream stream = new MemoryStream(contentBytes);
             using (var reader = new StreamReader(stream))
             using (var csv = new CsvReader(reader, System.Globalization.CultureInfo.InvariantCulture))
             {
-                var records = new List<KindleCsv>();
+                
 
                 //skip the first 7 lines because they contain irrelevant information
                 for(int i =1; i<=7; i++)
@@ -285,6 +323,7 @@ namespace ms_graph_app.Controllers
                 }
             }
             Console.WriteLine("END OF PARSE");
+            return records;
         }
 
         private ComputerVisionClient GetComputerVisionClient()
