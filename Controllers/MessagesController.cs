@@ -10,10 +10,6 @@ using System.Threading;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
-//using SixLabors.ImageSharp;
-//using SixLabors.ImageSharp.Processing;
-//using SixLabors.ImageSharp.PixelFormats;
-//using Image = SixLabors.ImageSharp.Image;
 using KeyValuePair = System.Collections.Generic.KeyValuePair;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
@@ -43,8 +39,8 @@ namespace ms_graph_app.Controllers
             var sub = new Microsoft.Graph.Subscription();
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
-            sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages?$filter=isRead eq false";
-            //sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages";
+            //sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages?$filter=isRead eq false";
+            sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages";
 
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
@@ -179,10 +175,10 @@ namespace ms_graph_app.Controllers
                 {
                     if (attachment.ContentType.Contains("image"))
                     {
-                        string txt = await OCR(attachment.ContentBytes);
-                        Console.WriteLine(txt);
+                        string txtFromImg = await OCR(attachment.ContentBytes);
                         var dataName = "name:fileBlock1";
                         var msgTitle = kvp.Key.Subject;
+                        //var pageTitle = String.Join(" ", txtFromImg.Split().Take(5).ToArray());
                         var htmlString =
                             "<!DOCTYPE html>" +
                             "<html>" +
@@ -191,9 +187,10 @@ namespace ms_graph_app.Controllers
                             "</head>" +
                             "<body>";
 
-                        htmlString += $"<p>{txt}</p>";
+                        htmlString += $"<p>{txtFromImg}</p>";
                      
                         htmlString += $"<object data-attachment=\"{attachment.Name}\" data=\"{dataName}\" type=\"{attachment.ContentType}\" />";
+
                         htmlString += "</body>"
                                     + "</html>";
                         Console.WriteLine(htmlString);
@@ -202,7 +199,7 @@ namespace ms_graph_app.Controllers
                     else if (attachment.ContentType.Contains("csv"))
                     {
                         var dataName = "name:fileBlock1";
-                        var list = CsvParse(attachment.ContentBytes);
+                        var records = CsvParse(attachment.ContentBytes);
                         var msgTitle = kvp.Key.Subject;
                         var htmlString =
                             "<!DOCTYPE html>" +
@@ -211,11 +208,10 @@ namespace ms_graph_app.Controllers
                             $"<title> {msgTitle} </title>" +
                             "</head>" +
                             "<body>";
-                        foreach (var record in list)
+                        foreach (var record in records)
                         {
                             htmlString += $"<p>{record.Annotation} ({record.Location})</p>";
                         }
-                        //htmlString += $"<object> data-attachment=\"{attachment.Name}\" data=\"name:fileBlock1\" type=\"{attachment.ContentType}\" </object>";
                         htmlString += $"<object data-attachment=\"{attachment.Name}\" data=\"{dataName}\" type=\"{attachment.ContentType}\" />";
                         htmlString += "</body>"
                                     + "</html>";
@@ -225,8 +221,7 @@ namespace ms_graph_app.Controllers
                 }
                 await MarkMessageAsRead(graphClient, kvp.Key.Id);
             }
-            //var str = "hello world";
-            //await PostToNotebook(graphClient, str);
+
             OutputMessages(messages);
 
         }
@@ -234,8 +229,6 @@ namespace ms_graph_app.Controllers
         private async Task PostToNotebook(GraphServiceClient graphClient, string msg, FileAttachment attachment)
         {
             
-            //var byteData = Encoding.UTF8.GetBytes(msg);
-            //Stream stream = new MemoryStream(byteData);
             var accessToken = GetAccessToken().Result;
             using (var client = new HttpClient())
             {
@@ -243,10 +236,8 @@ namespace ms_graph_app.Controllers
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 using (var content = new MultipartFormDataContent("MyPartBoundary198374"))
                 {
-                    
                     var stringContent = new StringContent(msg, Encoding.UTF8, "text/html");
                     content.Add(stringContent, "Presentation");
-                    //content.Add(fileContent, "fileBlock1", "We Do_ Saying Yes to a Relationship of Depth_ True Connection_ and Enduring Love-Notebook");
                     var fileContent = new ByteArrayContent(attachment.ContentBytes);
                     fileContent.Headers.ContentType = new MediaTypeHeaderValue(attachment.ContentType);
                     content.Add(fileContent, "fileBlock1", "fileBlock1");
@@ -254,14 +245,11 @@ namespace ms_graph_app.Controllers
                         .Onenote
                         .Pages
                         .RequestUrl;
-
                     using (
                        var message =
                            await client.PostAsync(requestUrl, content))
                     {
-                        Console.WriteLine(message.StatusCode);
                         Console.WriteLine(message.ReasonPhrase);
-                        Console.WriteLine(message.ToString());
                     }
                 }
             }
