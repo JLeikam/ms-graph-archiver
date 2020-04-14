@@ -44,6 +44,8 @@ namespace ms_graph_app.Controllers
             sub.ChangeType = "created";
             sub.NotificationUrl = $"{config.Ngrok}/api/messages";
             sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages?$filter=isRead eq false";
+            //sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages";
+
             sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
             sub.ClientState = Guid.NewGuid().ToString();
 
@@ -182,22 +184,37 @@ namespace ms_graph_app.Controllers
                     }
                     else if (attachment.ContentType.Contains("csv"))
                     {
+                        var dataName = "name:fileBlock1";
                         var list = CsvParse(attachment.ContentBytes);
-                        //foreach(var record in list)
-                        //{
-
-                        //}
+                        var msgTitle = kvp.Key.Subject;
+                        var htmlString =
+                            "<!DOCTYPE html>" +
+                            "<html>" +
+                            "<head>" +
+                            $"<title> {msgTitle} </title>" +
+                            "</head>" +
+                            "<body>";
+                        foreach (var record in list)
+                        {
+                            htmlString += $"<p>{record.Annotation} ({record.Location})</p>";
+                        }
+                        //htmlString += $"<object> data-attachment=\"{attachment.Name}\" data=\"name:fileBlock1\" type=\"{attachment.ContentType}\" </object>";
+                        htmlString += $"<object data-attachment=\"{attachment.Name}\" data=\"{dataName}\" type=\"{attachment.ContentType}\" />";
+                        htmlString += "</body>"
+                                    + "</html>";
+                        Console.WriteLine(htmlString);
+                        await PostToNotebook(graphClient, htmlString, attachment);
                     }
                 }
                 await MarkMessageAsRead(graphClient, kvp.Key.Id);
             }
-            var str = "hello world";
-            await PostToNotebook(graphClient, str);
+            //var str = "hello world";
+            //await PostToNotebook(graphClient, str);
             OutputMessages(messages);
 
         }
 
-        private async Task PostToNotebook(GraphServiceClient graphClient, string msg)
+        private async Task PostToNotebook(GraphServiceClient graphClient, string msg, FileAttachment attachment)
         {
             
             //var byteData = Encoding.UTF8.GetBytes(msg);
@@ -209,9 +226,13 @@ namespace ms_graph_app.Controllers
                 client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                 using (var content = new MultipartFormDataContent("MyPartBoundary198374"))
                 {
-                    var stringContent = new StringContent("<h1>Hello</h1>", Encoding.UTF8, "text/html");
+                    
+                    var stringContent = new StringContent(msg, Encoding.UTF8, "text/html");
                     content.Add(stringContent, "Presentation");
-
+                    //content.Add(fileContent, "fileBlock1", "We Do_ Saying Yes to a Relationship of Depth_ True Connection_ and Enduring Love-Notebook");
+                    var fileContent = new ByteArrayContent(attachment.ContentBytes);
+                    fileContent.Headers.ContentType = new MediaTypeHeaderValue(attachment.ContentType);
+                    content.Add(fileContent, "fileBlock1", "fileBlock1");
                     var requestUrl = graphClient.Users["jleikam@integrativemeaning.com"]
                         .Onenote
                         .Pages
@@ -222,6 +243,8 @@ namespace ms_graph_app.Controllers
                            await client.PostAsync(requestUrl, content))
                     {
                         Console.WriteLine(message.StatusCode);
+                        Console.WriteLine(message.ReasonPhrase);
+                        Console.WriteLine(message.ToString());
                     }
                 }
             }
