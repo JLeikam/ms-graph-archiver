@@ -10,7 +10,6 @@ using System.Threading;
 using Microsoft.Graph;
 using Microsoft.Identity.Client;
 using System.Net.Http.Headers;
-using KeyValuePair = System.Collections.Generic.KeyValuePair;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision;
 using Microsoft.Azure.CognitiveServices.Vision.ComputerVision.Models;
 using CsvHelper;
@@ -36,14 +35,14 @@ namespace ms_graph_app.Controllers
         public async Task<ActionResult<string>> Get()
         {
             var graphServiceClient = GetGraphClient();
-            var sub = new Microsoft.Graph.Subscription();
-            sub.ChangeType = "created";
-            sub.NotificationUrl = $"{config.Ngrok}/api/messages";
-            //sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages?$filter=isRead eq false";
-            sub.Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages";
-
-            sub.ExpirationDateTime = DateTime.UtcNow.AddMinutes(5);
-            sub.ClientState = Guid.NewGuid().ToString();
+            var sub = new Subscription
+            {
+                ChangeType = "created",
+                NotificationUrl = $"{config.Ngrok}/api/messages",
+                Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages",
+                ExpirationDateTime = DateTime.UtcNow.AddMinutes(5),
+                ClientState = Guid.NewGuid().ToString()
+            };
 
             var newSubscription = await graphServiceClient
                 .Subscriptions
