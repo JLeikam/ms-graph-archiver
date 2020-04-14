@@ -181,6 +181,23 @@ namespace ms_graph_app.Controllers
                     {
                         string txt = await OCR(attachment.ContentBytes);
                         Console.WriteLine(txt);
+                        var dataName = "name:fileBlock1";
+                        var msgTitle = kvp.Key.Subject;
+                        var htmlString =
+                            "<!DOCTYPE html>" +
+                            "<html>" +
+                            "<head>" +
+                            $"<title> {msgTitle} </title>" +
+                            "</head>" +
+                            "<body>";
+
+                        htmlString += $"<p>{txt}</p>";
+                     
+                        htmlString += $"<object data-attachment=\"{attachment.Name}\" data=\"{dataName}\" type=\"{attachment.ContentType}\" />";
+                        htmlString += "</body>"
+                                    + "</html>";
+                        Console.WriteLine(htmlString);
+                        await PostToNotebook(graphClient, htmlString, attachment);
                     }
                     else if (attachment.ContentType.Contains("csv"))
                     {
