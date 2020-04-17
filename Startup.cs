@@ -10,6 +10,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.Graph;
+using ms_graph_app.Utils;
 
 namespace ms_graph_app
 {
@@ -32,19 +34,31 @@ namespace ms_graph_app
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-    public void Configure(IApplicationBuilder app, IHostingEnvironment env)
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime lifetime)
     {
-      if (env.IsDevelopment())
+      lifetime.ApplicationStarted.Register(OnApplicationStarted);
+      if(env.IsDevelopment())
       {
         app.UseDeveloperExceptionPage();
       }
       else
       {
         app.UseHsts();
+        app.UseHttpsRedirection();
       }
 
-      //app.UseHttpsRedirection();
       app.UseMvc();
+    }
+
+    public void OnApplicationStarted()
+    {
+      Console.WriteLine("started");
+
+      var graphConfig = new GraphConfig();
+      Configuration.Bind("GraphConfig", graphConfig);
+
+      var graphHelper = new GraphHelper(graphConfig);
+            _ = graphHelper.InitSubscription();
     }
   }
 }

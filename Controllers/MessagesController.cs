@@ -31,33 +31,33 @@ namespace ms_graph_app.Controllers
             this.config = config;
         }
 
-        [HttpGet]
-        public async Task<ActionResult<string>> Get()
-        {
-            var graphServiceClient = GetGraphClient();
-            var sub = new Subscription
-            {
-                ChangeType = "created",
-                NotificationUrl = $"{config.URL}/api/messages",
-                Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages",
-                ExpirationDateTime = DateTime.UtcNow.AddMinutes(5),
-                ClientState = Guid.NewGuid().ToString()
-            };
+        //[HttpGet]
+        //public async Task<ActionResult<string>> Get()
+        //{
+        //    var graphServiceClient = GetGraphClient();
+        //    var sub = new Subscription
+        //    {
+        //        ChangeType = "created",
+        //        NotificationUrl = $"{config.URL}/api/messages",
+        //        Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages",
+        //        ExpirationDateTime = DateTime.UtcNow.AddMinutes(5),
+        //        ClientState = Guid.NewGuid().ToString()
+        //    };
 
-            var newSubscription = await graphServiceClient
-                .Subscriptions
-                .Request()
-                .AddAsync(sub);
+        //    var newSubscription = await graphServiceClient
+        //        .Subscriptions
+        //        .Request()
+        //        .AddAsync(sub);
 
-            Subscriptions[newSubscription.Id] = newSubscription;
+        //    Subscriptions[newSubscription.Id] = newSubscription;
 
-            if (subscriptionTimer == null)
-            {
-                subscriptionTimer = new Timer(CheckSubscriptions, null, 5000, 15000);
-            }
+        //    if (subscriptionTimer == null)
+        //    {
+        //        subscriptionTimer = new Timer(CheckSubscriptions, null, 5000, 15000);
+        //    }
 
-            return $"Subscribed. Id: {newSubscription.Id}, Expiration: {newSubscription.ExpirationDateTime}";
-        }
+        //    return $"Subscribed. Id: {newSubscription.Id}, Expiration: {newSubscription.ExpirationDateTime}";
+        //}
 
         public async Task<ActionResult<string>> Post([FromQuery]string validationToken = null)
         {
