@@ -38,7 +38,7 @@ namespace ms_graph_app.Controllers
             var sub = new Subscription
             {
                 ChangeType = "created",
-                NotificationUrl = $"{config.Ngrok}/api/messages",
+                NotificationUrl = $"{config.URL}/api/messages",
                 Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages",
                 ExpirationDateTime = DateTime.UtcNow.AddMinutes(5),
                 ClientState = Guid.NewGuid().ToString()
