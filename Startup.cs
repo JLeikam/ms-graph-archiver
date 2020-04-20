@@ -30,13 +30,14 @@ namespace ms_graph_app
       services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
       var graphConfig = new GraphConfig();
       Configuration.Bind("GraphConfig", graphConfig);
-      services.AddSingleton(graphConfig);
+      var graphHelper = new GraphHelper(graphConfig);
+      services.AddSingleton(graphHelper);
     }
 
     // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-    public void Configure(IApplicationBuilder app, IHostingEnvironment env, IApplicationLifetime lifetime)
+    public void Configure(IApplicationBuilder app, IHostingEnvironment env, GraphHelper graphHelper)
     {
-      lifetime.ApplicationStarted.Register(OnApplicationStarted);
+      
       if(env.IsDevelopment())
       {
         app.UseDeveloperExceptionPage();
@@ -47,18 +48,9 @@ namespace ms_graph_app
         app.UseHttpsRedirection();
       }
 
+         _ = graphHelper.InitSubscription();
+
       app.UseMvc();
-    }
-
-    public void OnApplicationStarted()
-    {
-      Console.WriteLine("started");
-
-      var graphConfig = new GraphConfig();
-      Configuration.Bind("GraphConfig", graphConfig);
-
-      var graphHelper = new GraphHelper(graphConfig);
-            _ = graphHelper.InitSubscription();
     }
   }
 }

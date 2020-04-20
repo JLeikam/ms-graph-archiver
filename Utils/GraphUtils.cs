@@ -11,7 +11,7 @@ namespace ms_graph_app.Utils
 {
     public class GraphHelper
     {
-        private readonly GraphConfig config;
+        public readonly GraphConfig config;
         private static Dictionary<string, Subscription> Subscriptions = new Dictionary<string, Subscription>();
         private static Timer subscriptionTimer = null;
         public GraphHelper(GraphConfig config)
