@@ -24,7 +24,7 @@ namespace ms_graph_app.Controllers
     public class MessagesController : ControllerBase
     {
         private readonly GraphConfig config;
-        public GraphHelper graphHelper;
+        private GraphHelper graphHelper;
 
         public MessagesController(GraphHelper graphHelper)
         {

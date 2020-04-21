@@ -48,7 +48,7 @@ namespace ms_graph_app
         app.UseHttpsRedirection();
       }
 
-         _ = graphHelper.InitSubscription();
+      _ = graphHelper.InitSubscription();
 
       app.UseMvc();
     }

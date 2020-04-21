@@ -14,6 +14,7 @@ namespace ms_graph_app.Utils
         public readonly GraphConfig config;
         private static Dictionary<string, Subscription> Subscriptions = new Dictionary<string, Subscription>();
         private static Timer subscriptionTimer = null;
+        private static int MAX_EXPIRATION_MINUTES = 4230;
         public GraphHelper(GraphConfig config)
         {
             this.config = config;
@@ -58,7 +59,7 @@ namespace ms_graph_app.Utils
                 ChangeType = "created",
                 NotificationUrl = $"{config.URL}/api/messages",
                 Resource = $"/users/jleikam@integrativemeaning.com/mailFolders/{config.ArchiverId}/messages",
-                ExpirationDateTime = DateTime.UtcNow.AddMinutes(5),
+                ExpirationDateTime = DateTime.UtcNow.AddMinutes(MAX_EXPIRATION_MINUTES),
                 ClientState = Guid.NewGuid().ToString()
             };
 
@@ -71,7 +72,8 @@ namespace ms_graph_app.Utils
 
             if (subscriptionTimer == null)
             {
-                subscriptionTimer = new Timer(CheckSubscriptions, null, 5000, 15000);
+                //check subscriptions every hour
+                subscriptionTimer = new Timer(CheckSubscriptions, null, 5000, 3600000);
             }
 
             Console.WriteLine($"Subscribed. Id: {newSubscription.Id}, Expiration: {newSubscription.ExpirationDateTime}");
@@ -85,7 +87,7 @@ namespace ms_graph_app.Utils
 
             var newSubscription = new Subscription
             {
-                ExpirationDateTime = DateTime.UtcNow.AddMinutes(5)
+                ExpirationDateTime = DateTime.UtcNow.AddMinutes(MAX_EXPIRATION_MINUTES)
             };
 
             await graphServiceClient
@@ -106,8 +108,8 @@ namespace ms_graph_app.Utils
 
             foreach (var subscription in Subscriptions)
             {
-                // if the subscription expires in the next 2 min, renew it
-                if (subscription.Value.ExpirationDateTime < DateTime.UtcNow.AddMinutes(2))
+                // if the subscription expires in the next two hours, renew it
+                if (subscription.Value.ExpirationDateTime < DateTime.UtcNow.AddMinutes(120))
                 {
                     RenewSubscription(subscription.Value);
                 }
